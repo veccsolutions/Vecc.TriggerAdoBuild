@@ -30,6 +30,7 @@ namespace Vecc.TriggerAdoBuild
                 var pat = req.Query["pat"];
 
                 log.LogInformation("Got query parameters");
+                await client.PurgeInstanceHistoryAsync("hello123");
 
                 var existingInsance = await client.GetStatusAsync("hello123");
                 if (string.IsNullOrWhiteSpace(organization) ||

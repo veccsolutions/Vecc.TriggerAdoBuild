@@ -2,9 +2,7 @@
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Vecc.TriggerAdoBuild
 {
@@ -13,7 +11,7 @@ namespace Vecc.TriggerAdoBuild
         private static DateTime _lastUpdated = DateTime.MinValue;
 
         [FunctionName("AdoTrigger")]
-        public static async Task EntityTrigger([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
+        public static void EntityTrigger([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             try
             {
@@ -65,12 +63,15 @@ namespace Vecc.TriggerAdoBuild
                     log.LogInformation($@"Kicking off build pipeline {organization}\{project}\{buildDefinitionId} at {DateTime.UtcNow}");
                     var url = $"https://dev.azure.com/{organization}/{project}/_apis/build/builds?definitionId={buildDefinitionId}&api-version=6.1-preview.6";
                     var encodedPat = Convert.ToBase64String(Encoding.UTF8.GetBytes($"something:{accessToken}"));
-                    var httpClient = new HttpClient();
 
-                    httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {encodedPat}");
+                    var webRequest = System.Net.WebRequest.CreateHttp(url);
+                    webRequest.ContentType = "application/json";
+                    webRequest.Headers.Add("Authorization", $"Basic {encodedPat}");
+                    webRequest.Method = "POST";
+                    webRequest.ContentLength = 0;
+                    var webResponse = webRequest.GetResponse();
+                    webResponse.Dispose();
 
-                    var response = await httpClient.PostAsync(url, new ObjectContent(typeof(object), new object(), new System.Net.Http.Formatting.JsonMediaTypeFormatter()));
-                    response.EnsureSuccessStatusCode();
                     log.LogInformation($"Finished kick off at {DateTime.UtcNow}");
                 }
             }
