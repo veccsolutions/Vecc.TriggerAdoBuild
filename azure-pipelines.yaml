@@ -10,7 +10,7 @@ steps:
 - task: Docker@2
   displayName: Login
   inputs:
-    containerRegistry: 'crvecc.azurecr.io-Docker'
+    containerRegistry: 'crvecc.azurecr.io-Vecc.TriggerAdoBuild'
     command: 'login'
 - task: CmdLine@2
   displayName: Build
