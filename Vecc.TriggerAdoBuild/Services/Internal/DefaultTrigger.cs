@@ -18,6 +18,7 @@ namespace Vecc.TriggerAdoBuild.Services.Internal
         {
             this._triggerQueue = new ConcurrentQueue<Blob>();
             this._logger = logger;
+            this._runner = Run();
         }
 
         public Task QueueItemAsync(Blob blob)
@@ -26,33 +27,36 @@ namespace Vecc.TriggerAdoBuild.Services.Internal
             return Task.CompletedTask;
         }
 
-        public async Task Run()
+        public Task Run()
         {
-            while (true)
+            return Task.Run(async () =>
             {
-                if (_triggerQueue.TryDequeue(out var blob))
+                while (true)
                 {
-                    this._logger.LogInformation("Triggering build on: {blob}", blob.Url);
-                    var encodedPat = Convert.ToBase64String(Encoding.UTF8.GetBytes($"something:{blob.Pat}"));
-                    var httpClient = new HttpClient();
-                    var requestMessage = new HttpRequestMessage(HttpMethod.Post, blob.Url);
-                    requestMessage.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-                    requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", encodedPat);
-                    try
+                    if (_triggerQueue.TryDequeue(out var blob))
                     {
-                        await httpClient.SendAsync(requestMessage);
-                        this._logger.LogInformation("Triggered succesfully");
+                        this._logger.LogInformation("Triggering build on: {blob}", blob.Url);
+                        var encodedPat = Convert.ToBase64String(Encoding.UTF8.GetBytes($"something:{blob.Pat}"));
+                        var httpClient = new HttpClient();
+                        var requestMessage = new HttpRequestMessage(HttpMethod.Post, blob.Url);
+                        requestMessage.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+                        requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", encodedPat);
+                        try
+                        {
+                            await httpClient.SendAsync(requestMessage);
+                            this._logger.LogInformation("Triggered succesfully");
+                        }
+                        catch (Exception exception)
+                        {
+                            this._logger.LogError(exception, "Error posting to URL: {url}", blob.Url);
+                        }
                     }
-                    catch (Exception exception)
+                    else
                     {
-                        this._logger.LogError(exception, "Error posting to URL: {url}", blob.Url);
+                        await Task.Delay(1000);
                     }
                 }
-                else
-                {
-                    await Task.Delay(1000);
-                }
-            }
+            });
         }
     }
 }
