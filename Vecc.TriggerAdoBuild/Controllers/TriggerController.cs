@@ -21,6 +21,7 @@ namespace Vecc.TriggerAdoBuild.Controllers
         }
 
         [HttpGet("")]
+        [HttpPost("")]
         public async Task<IActionResult> Index([FromQuery] Blob blob)
         {
             this._logger.LogInformation("Queueing build for url: {url}", blob.Url);
