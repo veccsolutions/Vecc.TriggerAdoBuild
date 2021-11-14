@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using Vecc.TriggerAdoBuild.Models;
+using Vecc.TriggerAdoBuild.Services;
 
 namespace Vecc.TriggerAdoBuild.Controllers
 {
@@ -13,29 +12,27 @@ namespace Vecc.TriggerAdoBuild.Controllers
     public class TriggerController : ControllerBase
     {
         private readonly ILogger<TriggerController> _logger;
+        private readonly ITrigger _trigger;
 
-        public TriggerController(ILogger<TriggerController> logger)
+        public TriggerController(ILogger<TriggerController> logger, ITrigger trigger)
         {
             this._logger = logger;
+            this._trigger = trigger;
         }
 
         [HttpGet("")]
         public async Task<IActionResult> Index([FromQuery] Blob blob)
         {
-            this._logger.LogInformation("Triggering build on: {blob}", blob.Url);
-            var encodedPat = Convert.ToBase64String(Encoding.UTF8.GetBytes($"something:{blob.Pat}"));
-            var httpClient = new HttpClient();
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, blob.Url);
-            requestMessage.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-            requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", encodedPat);
+            this._logger.LogInformation("Queueing build for url: {url}", blob.Url);
             try
             {
-                await httpClient.SendAsync(requestMessage);
+                await this._trigger.QueueItemAsync(blob);
+                this._logger.LogInformation("Queueing successful");
                 return this.Ok();
             }
             catch (Exception exception)
             {
-                this._logger.LogError(exception, "Error posting to URL: {url}", blob.Url);
+                this._logger.LogError(exception, "Error queueing blob: {url}", blob.Url);
                 return this.StatusCode(500);
             }
         }
